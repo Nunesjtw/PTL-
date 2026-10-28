@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>minicall</title>
+<style>
+  :root {
+    --bg: #171923; --panel: #1f2230; --line: #2d3144; --text: #e7e9f0; --dim: #8b90a5;
+    --accent: #8ea2ff; --danger: #ff6f7f; --ok: #6fd6a2;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { display: grid; grid-template-columns: 240px 1fr 300px; background: var(--bg); color: var(--text);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  button { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  aside { background: var(--panel); border-right: 1px solid var(--line); padding: 18px 14px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
+  aside h1 { font-size: 18px; font-weight: 600; letter-spacing: .02em; }
+  .ch { padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+  .ch:hover { background: var(--line); }
+  .ch.on { background: var(--line); color: var(--accent); }
+  .ch .n::before { content: "# "; color: var(--dim); }
+  .mem { margin: 4px 0 0 18px; color: var(--dim); font-size: 13px; }
+  .mem span { display: block; }
+  #me { margin-top: auto; color: var(--dim); font-size: 13px; }
+
+  main { display: flex; flex-direction: column; min-width: 0; }
+  #stage { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; padding: 14px; align-content: start; overflow: auto; }
+  .tile { position: relative; background: #000; border-radius: 10px; overflow: hidden; aspect-ratio: 16/9; cursor: pointer; }
+  .tile video { width: 100%; height: 100%; object-fit: contain; }
+  .tile span { position: absolute; left: 10px; bottom: 8px; background: rgba(0,0,0,.6); padding: 2px 8px; border-radius: 6px; font-size: 13px; }
+  #empty { grid-column: 1 / -1; align-self: center; text-align: center; color: var(--dim); padding: 80px 20px; }
+  #bar { display: flex; justify-content: center; gap: 10px; padding: 14px; border-top: 1px solid var(--line); }
+  #bar button.off { background: var(--danger); border-color: var(--danger); color: #1a0b0e; }
+  #bar button.live { background: var(--ok); border-color: var(--ok); color: #08210f; }
+  #bar #leave { color: var(--danger); }
+
+  #chat { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+  #msgs { flex: 1; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .m b { color: var(--accent); font-weight: 600; margin-right: 6px; }
+  .m { overflow-wrap: anywhere; }
+  #txt { margin: 12px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+  #txt:disabled { opacity: .5; }
+
+  @media (max-width: 900px) {
+    body { grid-template-columns: 1fr; grid-template-rows: auto 1fr 240px; height: 100%; }
+    aside { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px; }
+    #me { margin: 0; width: 100%; }
+    #chat { border-left: 0; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<aside>
+  <h1>minicall</h1>
+  <div id="channels"></div>
+  <button id="newch">Novo canal de voz</button>
+  <div id="me"></div>
+</aside>
+
+<main>
+  <div id="stage"><div id="empty"></div></div>
+  <div id="bar" hidden>
+    <button id="mic">Microfone</button>
+    <button id="deaf">Áudio</button>
+    <button id="share">Compartilhar tela</button>
+    <button id="leave">Sair da call</button>
+  </div>
+</main>
+
+<section id="chat">
+  <div id="msgs"></div>
+  <input id="txt" placeholder="Entre em um canal para conversar" maxlength="1000" autocomplete="off" disabled>
+</section>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+let name = localStorage.name || prompt('Seu nome:') || 'Eu';
+localStorage.name = name;
+let code = localStorage.code || '';
+$('#me').textContent = 'Você: ' + name;
+
+const socket = io({ autoConnect: false });
+let ice = [{ urls: 'stun:stun.l.google.com:19302' }];
+fetch('/ice').then((r) => r.json()).then((j) => (ice = j)).catch(() => {});
+function start() { socket.auth = { name, code }; socket.connect(); }
+socket.on('connect_error', (e) => {
+  if (e.message === 'code') {
+    const c = prompt('Código de acesso:');
+    if (c === null) return;
+    code = c; localStorage.code = c; start();
+  }
+});
+
+let channels = [], cur = null, micStream = null, screenStream = null, localTile = null;
+let muted = false, deaf = false;
+const peers = new Map();
+
+/* ---------- interface ---------- */
+function ui() {
+  const box = $('#channels');
+  box.innerHTML = '';
+  channels.forEach((c) => {
+    const d = document.createElement('div');
+    d.className = 'ch' + (c.id === cur ? ' on' : '');
+    const n = document.createElement('div');
+    n.className = 'n'; n.textContent = c.name;
+    d.append(n);
+    if (c.members.length) {
+      const m = document.createElement('div');
+      m.className = 'mem';
+      c.members.forEach((u) => { const s = document.createElement('span'); s.textContent = u.name; m.append(s); });
+      d.append(m);
+    }
+    d.onclick = () => join(c.id);
+    box.append(d);
+  });
+  $('#bar').hidden = !cur;
+  $('#mic').textContent = muted || deaf ? 'Microfone mutado' : 'Microfone';
+  $('#mic').classList.toggle('off', muted || deaf);
+  $('#deaf').textContent = deaf ? 'Áudio mutado' : 'Áudio';
+  $('#deaf').classList.toggle('off', deaf);
+  $('#share').textContent = screenStream ? 'Parar transmissão' : 'Compartilhar tela';
+  $('#share').classList.toggle('live', !!screenStream);
+  $('#txt').disabled = !cur;
+  $('#txt').placeholder = cur ? 'Mensagem' : 'Entre em um canal para conversar';
+  const hasTile = $('#stage .tile:not([hidden])');
+  const empty = $('#empty');
+  empty.hidden = !!hasTile;
+  empty.textContent = cur ? 'Você está na call. Use “Compartilhar tela” para transmitir.' : 'Escolha um canal de voz à esquerda para entrar.';
+}
+socket.on('channels', (l) => { channels = l; ui(); });
+$('#newch').onclick = () => { const n = prompt('Nome do canal:'); if (n) socket.emit('create', n); };
+
+/* ---------- chat ---------- */
+function addMsg(m) {
+  const d = document.createElement('div');
+  d.className = 'm';
+  const b = document.createElement('b'); b.textContent = m.name;
+  d.append(b, document.createTextNode(m.text));
+  const box = $('#msgs');
+  box.append(d);
+  box.scrollTop = box.scrollHeight;
+}
+socket.on('chat', addMsg);
+$('#txt').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.value.trim() && cur) { socket.emit('chat', e.target.value); e.target.value = ''; }
+});
+
+/* ---------- entrar / sair ---------- */
+async function join(id) {
+  if (id === cur) return;
+  if (cur) leave();
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  } catch (e) {
+    micStream = null;
+    alert('Não consegui acessar o microfone. Você vai entrar só ouvindo.');
+  }
+  applyAll();
+  cur = id;
+  socket.emit('join', id, (r) => {
+    $('#msgs').innerHTML = '';
+    r.messages.forEach(addMsg);
+    r.peers.forEach((p) => makePeer(p.id, p.name));
+    ui();
+  });
+}
+
+function leave() {
+  if (!cur) return;
+  socket.emit('leave');
+  stopShare();
+  peers.forEach((p, id) => dropPeer(id));
+  micStream?.getTracks().forEach((t) => t.stop());
+  micStream = null; cur = null;
+  $('#msgs').innerHTML = '';
+  ui();
+}
+$('#leave').onclick = leave;
+socket.on('disconnect', leave);
+
+/* ---------- WebRTC (peer a peer) ---------- */
+function makePeer(id, pname) {
+  if (peers.has(id)) return peers.get(id);
+  const pc = new RTCPeerConnection({ iceServers: ice });
+  const p = { pc, name: pname, polite: socket.id < id, making: false, ignore: false, els: new Map(), senders: [] };
+  peers.set(id, p);
+  pc.onicecandidate = (e) => e.candidate && socket.emit('signal', { to: id, data: { candidate: e.candidate } });
+  pc.onnegotiationneeded = async () => {
+    try {
+      p.making = true;
+      await pc.setLocalDescription();
+      socket.emit('signal', { to: id, data: { description: pc.localDescription } });
+    } catch (e) { console.error(e); } finally { p.making = false; }
+  };
+  pc.ontrack = (e) => addRemote(p, e);
+  if (micStream) micStream.getTracks().forEach((t) => pc.addTrack(t, micStream));
+  else pc.addTransceiver('audio', { direction: 'recvonly' });
+  if (screenStream) sendScreen(p);
+  return p;
+}
+
+function dropPeer(id) {
+  const p = peers.get(id);
+  if (!p) return;
+  p.pc.close();
+  p.els.forEach((el) => el.tile.remove());
+  peers.delete(id);
+  ui();
+}
+
+socket.on('peer:joined', (p) => makePeer(p.id, p.name));
+socket.on('peer:left', dropPeer);
+socket.on('peer:share', ({ id, on }) => {
+  const p = peers.get(id);
+  if (!p || on) return;
+  p.els.forEach((el, sid) => { if (el.tile.dataset.screen) { el.tile.remove(); p.els.delete(sid); } });
+  ui();
+});
+
+socket.on('signal', async ({ from, data }) => {
+  const p = peers.get(from) || makePeer(from, 'Alguém');
+  const pc = p.pc;
+  try {
+    if (data.description) {
+      const d = data.description;
+      const collision = d.type === 'offer' && (p.making || pc.signalingState !== 'stable');
+      p.ignore = !p.polite && collision;
+      if (p.ignore) return;
+      await pc.setRemoteDescription(d);
+      if (d.type === 'offer') {
+        await pc.setLocalDescription();
+        socket.emit('signal', { to: from, data: { description: pc.localDescription } });
+      }
+    } else if (data.candidate) {
+      try { await pc.addIceCandidate(data.candidate); } catch (e) { if (!p.ignore) throw e; }
+    }
+  } catch (e) { console.error(e); }
+});
+
+function addRemote(p, e) {
+  const s = e.streams[0];
+  if (!s) return;
+  let el = p.els.get(s.id);
+  if (!el) {
+    el = document.createElement('video');
+    el.autoplay = true; el.playsInline = true; el.muted = deaf;
+    el.srcObject = s;
+    const tile = document.createElement('div');
+    tile.className = 'tile'; tile.hidden = true;
+    const label = document.createElement('span');
+    label.textContent = p.name;
+    tile.append(el, label);
+    tile.onclick = () => el.requestFullscreen?.();
+    $('#stage').append(tile);
+    el.tile = tile;
+    p.els.set(s.id, el);
+    s.onremovetrack = () => {
+      if (!s.getVideoTracks().length) tile.hidden = true;
+      if (!s.getTracks().length) { tile.remove(); p.els.delete(s.id); }
+      ui();
+    };
+  }
+  if (e.track.kind === 'video') { el.tile.hidden = false; el.tile.dataset.screen = '1'; }
+  ui();
+}
+
+/* ---------- microfone e áudio ---------- */
+function applyAll() {
+  micStream?.getAudioTracks().forEach((t) => (t.enabled = !muted && !deaf));
+  peers.forEach((p) => p.els.forEach((el) => (el.muted = deaf)));
+  ui();
+}
+$('#mic').onclick = () => { if (deaf) { deaf = false; muted = false; } else muted = !muted; applyAll(); };
+$('#deaf').onclick = () => { deaf = !deaf; applyAll(); };
+
+/* ---------- compartilhar tela (1080p 60 fps) ---------- */
+async function tune(sender) {
+  if (sender.track?.kind !== 'video') return;
+  try {
+    const q = sender.getParameters();
+    q.encodings = q.encodings?.length ? q.encodings : [{}];
+    q.encodings[0].maxBitrate = 12_000_000;
+    q.encodings[0].maxFramerate = 60;
+    q.encodings[0].scaleResolutionDownBy = 1;
+    q.encodings[0].priority = 'high';
+    q.encodings[0].networkPriority = 'high';
+    q.degradationPreference = 'maintain-resolution';
+    await sender.setParameters(q);
+  } catch (e) { console.warn(e); }
+}
+function sendScreen(p) {
+  p.senders = screenStream.getTracks().map((t) => p.pc.addTrack(t, screenStream));
+  [800, 2500].forEach((ms) => setTimeout(() => p.senders.forEach(tune), ms));
+}
+async function toggleShare() {
+  if (screenStream) return stopShare();
+  try {
+    screenStream = await navigator.mediaDevices.getDisplayMedia({
+      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
+      audio: true,
+    });
+  } catch (e) { return; }
+  const v = screenStream.getVideoTracks()[0];
+  v.contentHint = 'motion';
+  v.onended = stopShare;
+  const vid = document.createElement('video');
+  vid.autoplay = true; vid.muted = true; vid.srcObject = screenStream;
+  const label = document.createElement('span'); label.textContent = 'Sua tela';
+  localTile = document.createElement('div');
+  localTile.className = 'tile';
+  localTile.append(vid, label);
+  $('#stage').append(localTile);
+  peers.forEach(sendScreen);
+  socket.emit('share', true);
+  ui();
+}
+function stopShare() {
+  if (!screenStream) return;
+  screenStream.getTracks().forEach((t) => t.stop());
+  peers.forEach((p) => {
+    p.senders.forEach((s) => { try { p.pc.removeTrack(s); } catch (e) {} });
+    p.senders = [];
+  });
+  localTile?.remove(); localTile = null;
+  screenStream = null;
+  socket.emit('share', false);
+  ui();
+}
+$('#share').onclick = toggleShare;
+
+/* ---------- diagnóstico (aparece no console, F12) ---------- */
+setInterval(async () => {
+  if (screenStream) {
+    const s = screenStream.getVideoTracks()[0].getSettings();
+    console.log('captura:', s.width + 'x' + s.height, s.frameRate + 'fps');
+  }
+  for (const p of peers.values()) {
+    (await p.pc.getStats()).forEach((r) => {
+      if (r.type === 'outbound-rtp' && r.kind === 'video')
+        console.log('envio:', r.frameWidth + 'x' + r.frameHeight, r.framesPerSecond + 'fps', 'limite:', r.qualityLimitationReason, 'codec:', r.encoderImplementation);
+    });
+  }
+}, 3000);
+
+ui();
+start();
+</script>
+</body>
+</html>
