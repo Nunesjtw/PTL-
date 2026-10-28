@@ -3,77 +3,160 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>minicall</title>
+<title>Chamada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #171923; --panel: #1f2230; --line: #2d3144; --text: #e7e9f0; --dim: #8b90a5;
-    --accent: #8ea2ff; --danger: #ff6f7f; --ok: #6fd6a2;
+    --bg: #030207; --surface: #09050f; --surface2: #100a1c; --surface3: #1a1030; --line: #1e1433;
+    --text: #eeeaf7; --dim: #9a8fb8; --accent: #8b5cf6; --accent-soft: #bba8fb;
+    --danger: #f0556b; --ok: #34d399;
   }
   * { box-sizing: border-box; margin: 0; }
   [hidden] { display: none !important; }
   html, body { height: 100%; }
-  body { display: grid; grid-template-columns: 240px 1fr 300px; background: var(--bg); color: var(--text);
-    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { display: grid; grid-template-columns: 272px minmax(0, 1fr) 320px; height: 100dvh; background: var(--bg); color: var(--text);
+    font: 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
   button, input { font: inherit; color: inherit; }
-  button { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; cursor: pointer; }
-  button:hover { border-color: var(--accent); }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button { cursor: pointer; border: 0; background: none; }
+  :focus-visible { outline: 2px solid var(--accent-soft); outline-offset: 2px; }
+  svg { display: block; flex: none; }
 
-  aside { background: var(--panel); border-right: 1px solid var(--line); padding: 18px 14px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
-  aside h1 { font-size: 18px; font-weight: 600; letter-spacing: .02em; }
-  .ch { padding: 8px 10px; border-radius: 8px; cursor: pointer; }
-  .ch:hover { background: var(--line); }
-  .ch.on { background: var(--line); color: var(--accent); }
-  .ch .n::before { content: "# "; color: var(--dim); }
-  .mem { margin: 4px 0 0 18px; color: var(--dim); font-size: 13px; }
-  .mem span { display: block; }
-  #me { margin-top: auto; color: var(--dim); font-size: 13px; }
+  .av { display: grid; place-items: center; border-radius: 50%; color: #fff; font-weight: 600; flex: none; }
 
-  main { display: flex; flex-direction: column; min-width: 0; }
-  #stage { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; padding: 14px; align-content: start; overflow: auto; }
-  .tile { position: relative; background: #000; border-radius: 10px; overflow: hidden; aspect-ratio: 16/9; cursor: pointer; }
+  /* barra lateral */
+  aside { background: var(--surface); border-right: 1px solid var(--line); padding: 20px 14px 14px; display: flex; flex-direction: column; gap: 18px; min-height: 0; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+  .logo { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff;
+    background: linear-gradient(145deg, #a78bfa, #6d28d9); box-shadow: 0 6px 18px rgba(109, 40, 217, .45); }
+  .sec { display: flex; align-items: center; justify-content: space-between; padding: 0 6px; color: var(--dim); font-weight: 500; }
+  .icon-btn { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--dim); transition: background .15s, color .15s; }
+  .icon-btn:hover { background: var(--surface3); color: var(--text); }
+  #channels { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 2px; margin-top: -8px; }
+  .ch { border-radius: 10px; cursor: pointer; padding: 4px; transition: background .15s; }
+  .ch:hover { background: var(--surface2); }
+  .ch.on { background: rgba(139, 92, 246, .16); }
+  .ch-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; color: var(--dim); font-weight: 500; }
+  .ch.on .ch-row { color: var(--accent-soft); }
+  .mem { margin: 0 0 4px 30px; display: flex; flex-direction: column; gap: 4px; }
+  .mem .u { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 13px; }
+  .me { display: flex; align-items: center; gap: 11px; padding: 10px; background: var(--surface2); border: 1px solid var(--line); border-radius: 14px; }
+  .me b { display: block; font-weight: 600; }
+  .me small { color: var(--dim); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .me small::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--dim); }
+  .me.live small::before { background: var(--ok); }
+
+  /* área principal */
+  main { display: flex; flex-direction: column; min-width: 0; min-height: 0;
+    background: radial-gradient(ellipse at 75% -10%, rgba(124, 58, 237, .13), transparent 55%); }
+  .top { height: 62px; padding: 0 22px; display: flex; flex-direction: column; justify-content: center; border-bottom: 1px solid var(--line); flex: none; }
+  .top strong { font-size: 15px; font-weight: 600; }
+  .top span { color: var(--dim); font-size: 12.5px; }
+  #stage { flex: 1; min-height: 0; overflow: auto; padding: 20px; display: grid; gap: 14px; align-content: start;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); }
+  .tile { position: relative; background: #000; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; aspect-ratio: 16/9; cursor: pointer; }
   .tile video { width: 100%; height: 100%; object-fit: contain; }
-  .tile span { position: absolute; left: 10px; bottom: 8px; background: rgba(0,0,0,.6); padding: 2px 8px; border-radius: 6px; font-size: 13px; }
-  #empty { grid-column: 1 / -1; align-self: center; text-align: center; color: var(--dim); padding: 80px 20px; }
-  #bar { display: flex; justify-content: center; gap: 10px; padding: 14px; border-top: 1px solid var(--line); }
-  #bar button.off { background: var(--danger); border-color: var(--danger); color: #1a0b0e; }
-  #bar button.live { background: var(--ok); border-color: var(--ok); color: #08210f; }
-  #bar #leave { color: var(--danger); }
+  .tile span { position: absolute; left: 12px; bottom: 12px; background: rgba(3, 2, 7, .78); backdrop-filter: blur(6px); padding: 4px 10px; border-radius: 8px; font-size: 12.5px; font-weight: 500; }
+  #empty { grid-column: 1 / -1; align-self: center; justify-self: center; text-align: center; padding: 12vh 20px; max-width: 420px; }
+  #empty .ring { width: 76px; height: 76px; margin: 0 auto 20px; border-radius: 50%; display: grid; place-items: center; color: var(--accent-soft);
+    background: radial-gradient(circle, rgba(139, 92, 246, .28), rgba(139, 92, 246, .06)); border: 1px solid rgba(139, 92, 246, .35); }
+  #empty h2 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+  #empty p { color: var(--dim); }
 
-  #chat { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
-  #msgs { flex: 1; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
-  .m b { color: var(--accent); font-weight: 600; margin-right: 6px; }
-  .m { overflow-wrap: anywhere; }
-  #txt { margin: 12px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
-  #txt:disabled { opacity: .5; }
+  #bar { display: flex; justify-content: center; padding: 6px 16px 22px; flex: none; }
+  .pill { display: flex; gap: 8px; padding: 8px; background: var(--surface2); border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+  .cb { height: 46px; min-width: 46px; padding: 0 14px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--surface3); font-weight: 500; transition: background .15s; }
+  .cb:hover { background: #271a44; }
+  .cb.off { background: rgba(240, 85, 107, .16); color: #ff8a9b; }
+  .cb.live { background: var(--accent); color: #fff; }
+  .cb.live:hover { background: #7c3aed; }
+  .cb.leave { background: var(--danger); color: #fff; }
+  .cb.leave:hover { background: #dc3f56; }
+
+  /* chat */
+  #chat { border-left: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
+  #msgs { flex: 1; overflow: auto; padding: 18px 18px 8px; display: flex; flex-direction: column; gap: 14px; }
+  .m { display: flex; gap: 10px; }
+  .m .mh { display: flex; align-items: baseline; gap: 8px; }
+  .m b { font-weight: 600; }
+  .m time { color: var(--dim); font-size: 11.5px; }
+  .m .mt { overflow-wrap: anywhere; color: #d9d3ea; }
+  .msg-empty { margin: auto; color: var(--dim); text-align: center; padding: 20px; }
+  #txt { margin: 12px 16px 16px; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--line); border-radius: 12px; transition: border-color .15s; }
+  #txt::placeholder { color: var(--dim); }
+  #txt:focus { outline: none; border-color: var(--accent); }
+  #txt:disabled { opacity: .55; }
+
+  /* coelhinho */
+  #bunny { position: fixed; top: 3px; right: 14px; width: 62px; height: 62px; z-index: 5; pointer-events: none; }
+  #bunny svg { width: 100%; height: 100%; overflow: visible; }
+  #bunny .iris { transition: transform .09s ease-out; }
 
   @media (max-width: 900px) {
-    body { grid-template-columns: 1fr; grid-template-rows: auto 1fr 240px; height: 100%; }
-    aside { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px; }
-    #me { margin: 0; width: 100%; }
+    body { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) 230px; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); max-height: 40vh; overflow: auto; }
     #chat { border-left: 0; border-top: 1px solid var(--line); }
+    .me { display: none; }
   }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
+<div id="bunny" aria-hidden="true">
+  <svg viewBox="0 0 100 100">
+    <g transform="rotate(-9 34 24)"><ellipse cx="34" cy="24" rx="10" ry="22" fill="#e6dff7"/><ellipse cx="34" cy="26" rx="5" ry="16" fill="#f2a9d2"/></g>
+    <g transform="rotate(9 66 24)"><ellipse cx="66" cy="24" rx="10" ry="22" fill="#e6dff7"/><ellipse cx="66" cy="26" rx="5" ry="16" fill="#f2a9d2"/></g>
+    <ellipse cx="50" cy="63" rx="35" ry="30" fill="#ece6f9"/>
+    <circle cx="23" cy="72" r="5.5" fill="#f58fb8" opacity=".7"/><circle cx="77" cy="72" r="5.5" fill="#f58fb8" opacity=".7"/>
+    <g><path d="M69 36 60 29.5v13Z M69 36 78 29.5v13Z" fill="#f0609e"/><circle cx="69" cy="36" r="2.6" fill="#ff8ec1"/></g>
+    <g>
+      <circle class="sclera" cx="36" cy="60" r="9.5" fill="#fff"/>
+      <g class="iris"><circle cx="36" cy="60" r="5.2" fill="#8a5a2b"/><circle cx="36" cy="60" r="5.2" fill="none" stroke="#5a3714" stroke-width="1"/><circle cx="36" cy="60" r="2.4" fill="#1a0e05"/><circle cx="34.3" cy="58.3" r="1.2" fill="#fff"/></g>
+    </g>
+    <g>
+      <circle class="sclera" cx="64" cy="60" r="9.5" fill="#fff"/>
+      <g class="iris"><circle cx="64" cy="60" r="5.2" fill="#8a5a2b"/><circle cx="64" cy="60" r="5.2" fill="none" stroke="#5a3714" stroke-width="1"/><circle cx="64" cy="60" r="2.4" fill="#1a0e05"/><circle cx="62.3" cy="58.3" r="1.2" fill="#fff"/></g>
+    </g>
+    <g fill="rgba(255,255,255,.08)" stroke="#2a1850" stroke-width="2.6">
+      <circle cx="36" cy="60" r="13.5"/><circle cx="64" cy="60" r="13.5"/>
+    </g>
+    <path d="M49.5 59.5h1" stroke="#2a1850" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M22.5 59 15 56M77.5 59 85 56" stroke="#2a1850" stroke-width="2.4" stroke-linecap="round"/>
+    <g fill="none" stroke="#20102f" stroke-linecap="round">
+      <path d="M26.3 58.5A9.8 9.8 0 0 1 45.7 58.5M54.3 58.5A9.8 9.8 0 0 1 73.7 58.5" stroke-width="2.2"/>
+      <path d="M27.3 57.7 20.1 55.7M29.1 54.2 23.4 49.4M32.2 51.8 29 45M36 51 36 44.5" stroke-width="2"/>
+      <path d="M72.7 57.7 79.9 55.7M70.9 54.2 76.6 49.4M67.8 51.8 71 45M64 51 64 44.5" stroke-width="2"/>
+    </g>
+    <ellipse cx="50" cy="75" rx="3.2" ry="2.4" fill="#e8799f"/>
+    <path d="M50 77.4v3M50 80.4q-3.5 3.2-7 .6M50 80.4q3.5 3.2 7 .6" fill="none" stroke="#5b4a78" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>
+</div>
 <aside>
-  <h1>minicall</h1>
+  <div class="brand"><div class="logo" id="logo"></div><span>Chamada</span></div>
+  <div class="sec"><span>Canais de voz</span><button id="newch" class="icon-btn" title="Novo canal de voz" aria-label="Novo canal de voz"></button></div>
   <div id="channels"></div>
-  <button id="newch">Novo canal de voz</button>
-  <div id="me"></div>
+  <div id="me" class="me"></div>
 </aside>
 
 <main>
-  <div id="stage"><div id="empty"></div></div>
+  <div class="top"><strong id="title">Chamada</strong><span id="sub"></span></div>
+  <div id="stage">
+    <div id="empty"><div class="ring" id="ering"></div><h2 id="et"></h2><p id="ed"></p></div>
+  </div>
   <div id="bar" hidden>
-    <button id="mic">Microfone</button>
-    <button id="deaf">Áudio</button>
-    <button id="share">Compartilhar tela</button>
-    <button id="leave">Sair da call</button>
+    <div class="pill">
+      <button class="cb" id="mic"></button>
+      <button class="cb" id="deaf"></button>
+      <button class="cb" id="share"></button>
+      <button class="cb leave" id="leave"></button>
+    </div>
   </div>
 </main>
 
 <section id="chat">
+  <div class="top"><strong>Chat</strong><span id="chsub">Entre em um canal para conversar</span></div>
   <div id="msgs"></div>
   <input id="txt" placeholder="Entre em um canal para conversar" maxlength="1000" autocomplete="off" disabled>
 </section>
@@ -81,10 +164,37 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);
+
+/* ---------- ícones e avatares ---------- */
+const P = {
+  phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  phoneOff: '<path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><path d="m22 2-20 20"/>',
+  mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/>',
+  micOff: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/><path d="m2 2 20 20"/>',
+  head: '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>',
+  headOff: '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/><path d="m2 2 20 20"/>',
+  screen: '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  vol: '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+};
+const svg = (n, s = 20) => '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + P[n] + '</svg>';
+function avatar(nm, size) {
+  let h = 0;
+  for (const ch of nm) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  const d = document.createElement('div');
+  d.className = 'av';
+  d.style.cssText = 'width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.42) + 'px;background:hsl(' + (250 + (h % 80)) + ',55%,48%)';
+  d.textContent = (nm.trim()[0] || '?').toUpperCase();
+  return d;
+}
+$('#logo').innerHTML = svg('phone', 18);
+$('#newch').innerHTML = svg('plus', 16);
+$('#ering').innerHTML = svg('phone', 30);
+
+/* ---------- conexão ---------- */
 let name = localStorage.name || prompt('Seu nome:') || 'Eu';
 localStorage.name = name;
 let code = localStorage.code || '';
-$('#me').textContent = 'Você: ' + name;
 
 const socket = io({ autoConnect: false });
 let ice = [{ urls: 'stun:stun.l.google.com:19302' }];
@@ -109,45 +219,87 @@ function ui() {
   channels.forEach((c) => {
     const d = document.createElement('div');
     d.className = 'ch' + (c.id === cur ? ' on' : '');
-    const n = document.createElement('div');
-    n.className = 'n'; n.textContent = c.name;
-    d.append(n);
+    const row = document.createElement('div');
+    row.className = 'ch-row';
+    row.innerHTML = svg('vol', 18);
+    const n = document.createElement('span');
+    n.textContent = c.name;
+    row.append(n);
+    d.append(row);
     if (c.members.length) {
       const m = document.createElement('div');
       m.className = 'mem';
-      c.members.forEach((u) => { const s = document.createElement('span'); s.textContent = u.name; m.append(s); });
+      c.members.forEach((u) => {
+        const r = document.createElement('div');
+        r.className = 'u';
+        const t = document.createElement('span');
+        t.textContent = u.name;
+        r.append(avatar(u.name, 22), t);
+        m.append(r);
+      });
       d.append(m);
     }
     d.onclick = () => join(c.id);
     box.append(d);
   });
+
+  const ch = channels.find((c) => c.id === cur);
+  $('#title').textContent = ch ? ch.name : 'Chamada';
+  $('#sub').textContent = ch ? ch.members.length + (ch.members.length === 1 ? ' pessoa na call' : ' pessoas na call') : 'Escolha um canal de voz para entrar';
+  $('#chsub').textContent = ch ? '#' + ch.name : 'Entre em um canal para conversar';
+
+  const me = $('#me');
+  me.className = 'me' + (cur ? ' live' : '');
+  me.innerHTML = '';
+  const info = document.createElement('div');
+  const b = document.createElement('b'); b.textContent = name;
+  const sm = document.createElement('small'); sm.textContent = ch ? 'Em ' + ch.name : 'Online';
+  info.append(b, sm);
+  me.append(avatar(name, 36), info);
+
   $('#bar').hidden = !cur;
-  $('#mic').textContent = muted || deaf ? 'Microfone mutado' : 'Microfone';
-  $('#mic').classList.toggle('off', muted || deaf);
-  $('#deaf').textContent = deaf ? 'Áudio mutado' : 'Áudio';
+  const mm = muted || deaf;
+  $('#mic').innerHTML = svg(mm ? 'micOff' : 'mic');
+  $('#mic').title = mm ? 'Ativar microfone' : 'Mutar microfone';
+  $('#mic').classList.toggle('off', mm);
+  $('#deaf').innerHTML = svg(deaf ? 'headOff' : 'head');
+  $('#deaf').title = deaf ? 'Ativar áudio' : 'Mutar áudio';
   $('#deaf').classList.toggle('off', deaf);
-  $('#share').textContent = screenStream ? 'Parar transmissão' : 'Compartilhar tela';
+  $('#share').innerHTML = svg('screen') + '<span>' + (screenStream ? 'Parar transmissão' : 'Compartilhar tela') + '</span>';
   $('#share').classList.toggle('live', !!screenStream);
+  $('#leave').innerHTML = svg('phoneOff') + '<span>Sair</span>';
   $('#txt').disabled = !cur;
-  $('#txt').placeholder = cur ? 'Mensagem' : 'Entre em um canal para conversar';
+  $('#txt').placeholder = cur ? 'Enviar mensagem' : 'Entre em um canal para conversar';
+
   const hasTile = $('#stage .tile:not([hidden])');
-  const empty = $('#empty');
-  empty.hidden = !!hasTile;
-  empty.textContent = cur ? 'Você está na call. Use “Compartilhar tela” para transmitir.' : 'Escolha um canal de voz à esquerda para entrar.';
+  $('#empty').hidden = !!hasTile;
+  $('#et').textContent = cur ? 'Você está na call' : 'Nenhum canal selecionado';
+  $('#ed').textContent = cur ? 'Quando alguém compartilhar a tela, ela aparece aqui. Para transmitir a sua, use o botão Compartilhar tela.' : 'Escolha um canal de voz na lista à esquerda para começar a conversar.';
 }
 socket.on('channels', (l) => { channels = l; ui(); });
 $('#newch').onclick = () => { const n = prompt('Nome do canal:'); if (n) socket.emit('create', n); };
 
 /* ---------- chat ---------- */
 function addMsg(m) {
+  const box = $('#msgs');
+  box.querySelector('.msg-empty')?.remove();
   const d = document.createElement('div');
   d.className = 'm';
+  const body = document.createElement('div');
+  const h = document.createElement('div');
+  h.className = 'mh';
   const b = document.createElement('b'); b.textContent = m.name;
-  d.append(b, document.createTextNode(m.text));
-  const box = $('#msgs');
+  const t = document.createElement('time');
+  t.textContent = new Date(m.t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  h.append(b, t);
+  const tx = document.createElement('div');
+  tx.className = 'mt'; tx.textContent = m.text;
+  body.append(h, tx);
+  d.append(avatar(m.name, 34), body);
   box.append(d);
   box.scrollTop = box.scrollHeight;
 }
+function clearMsgs() { $('#msgs').innerHTML = ''; }
 socket.on('chat', addMsg);
 $('#txt').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.value.trim() && cur) { socket.emit('chat', e.target.value); e.target.value = ''; }
@@ -166,7 +318,7 @@ async function join(id) {
   applyAll();
   cur = id;
   socket.emit('join', id, (r) => {
-    $('#msgs').innerHTML = '';
+    clearMsgs();
     r.messages.forEach(addMsg);
     r.peers.forEach((p) => makePeer(p.id, p.name));
     ui();
@@ -180,7 +332,7 @@ function leave() {
   peers.forEach((p, id) => dropPeer(id));
   micStream?.getTracks().forEach((t) => t.stop());
   micStream = null; cur = null;
-  $('#msgs').innerHTML = '';
+  clearMsgs();
   ui();
 }
 $('#leave').onclick = leave;
@@ -349,6 +501,18 @@ setInterval(async () => {
     });
   }
 }, 3000);
+
+/* ---------- coelhinho: olhos seguem o mouse ---------- */
+const irises = [...document.querySelectorAll('#bunny .iris')];
+addEventListener('pointermove', (e) => {
+  irises.forEach((g) => {
+    const r = g.parentNode.querySelector('.sclera').getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const a = Math.atan2(e.clientY - cy, e.clientX - cx);
+    const d = Math.min(Math.hypot(e.clientX - cx, e.clientY - cy) / 90, 1) * 3.8;
+    g.style.transform = 'translate(' + Math.cos(a) * d + 'px,' + Math.sin(a) * d + 'px)';
+  });
+});
 
 ui();
 start();

@@ -107,4 +107,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('minicall rodando em http://localhost:' + PORT));
+server.listen(PORT, () => console.log('Chamada rodando em http://localhost:' + PORT));
